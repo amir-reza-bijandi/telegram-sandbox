@@ -44,8 +44,7 @@ jobs:
           echo "Commit message: $COMMIT_MSG"
 
           CHANNEL_ID=$(printf '%s' "$COMMIT_MSG" \
-            | grep -oE '\[tg:-?[0-9]+\]' \
-            | grep -oE '-?[0-9]+' \
+            | sed -En 's/.*\[tg:(-?[0-9]+)\].*/\1/p' \
             | head -1)
 
           if [[ -z "$CHANNEL_ID" ]]; then

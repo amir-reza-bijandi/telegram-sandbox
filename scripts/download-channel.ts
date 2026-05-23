@@ -208,7 +208,7 @@ for await (const msg of await tg.getHistory(CHANNEL_ID, { limit: 1_000_000 })) {
   }
 
   const filename = safeFilename(rawName);
-  const destPath = uniquePath(TMP_DIR, filename);
+  const destPath = uniquePath(DOWNLOADS_DIR, filename);
 
   log.info(`[msg ${String(msg.id).padStart(8)}] ↓ ${filename} — ${colors.dim}${media.type}${colors.reset}`);
 

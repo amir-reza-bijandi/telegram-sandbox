@@ -24,7 +24,7 @@ jobs:
     name: Download & archive Telegram files
     runs-on: ubuntu-latest
     permissions:
-      contents: write   # needed to push the downloaded zips back to the repo
+      contents: write # needed to push the downloaded zips back to the repo
 
     steps:
       # ── 1. Checkout ──────────────────────────────────────────────────────────
@@ -44,10 +44,10 @@ jobs:
           echo "Commit message: $COMMIT_MSG"
 
           CHANNEL_ID=$(printf '%s' "$COMMIT_MSG" \
-            | grep -oP '\[tg:(-?\d+)\]' \
-            | grep -oP '-?\d+' \
+            | grep -oE '\[tg:-?[0-9]+\]' \
+            | grep -oE '-?[0-9]+' \
             | head -1)
-
+            
           if [[ -z "$CHANNEL_ID" ]]; then
             echo "::notice::No [tg:<id>] token found in commit message — skipping download."
             echo "found=false" >> "$GITHUB_OUTPUT"
@@ -79,9 +79,9 @@ jobs:
         if: steps.parse.outputs.found == 'true'
         working-directory: scripts
         env:
-          TG_API_ID:     ${{ secrets.TG_API_ID }}
-          TG_API_HASH:   ${{ secrets.TG_API_HASH }}
-          TG_SESSION:    ${{ secrets.TG_SESSION }}
+          TG_API_ID: ${{ secrets.TG_API_ID }}
+          TG_API_HASH: ${{ secrets.TG_API_HASH }}
+          TG_SESSION: ${{ secrets.TG_SESSION }}
           TG_CHANNEL_ID: ${{ steps.parse.outputs.channel }}
         run: |
           echo "::group::Telegram downloader output"

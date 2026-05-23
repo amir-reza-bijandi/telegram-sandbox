@@ -113,7 +113,7 @@ if (Number.isNaN(CHANNEL_ID)) {
 
 // Paths are relative to the repo root (scripts/../)
 const SCRIPT_DIR = import.meta.dir;
-const DOWNLOADS_DIR = path.resolve(SCRIPT_DIR, '..', 'downloads', CHANNEL);
+const DOWNLOADS_DIR = path.resolve(SCRIPT_DIR, '..', 'downloads');
 const TMP_DIR = path.resolve(SCRIPT_DIR, '..', '.tmp_tg', CHANNEL);
 
 fs.mkdirSync(DOWNLOADS_DIR, { recursive: true });

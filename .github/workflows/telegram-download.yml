@@ -55,29 +55,29 @@ jobs:
             echo "channel=$CHANNEL_ID"  >> "$GITHUB_OUTPUT"
           fi
 
-      # ── 3. Setup Bun ─────────────────────────────────────────────────────────
+      # ── 3. Setup Bun (runtime only — npm handles install) ────────────────────
       - name: Setup Bun
         if: steps.parse.outputs.found == 'true'
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
-      # ── 4. Cache Bun packages ─────────────────────────────────────────────────
-      # Caches ~/.bun/install/cache so packages are not re-downloaded every run.
-      # The cache is keyed on bun.lock; any lockfile change busts it automatically.
-      - name: Cache Bun packages
+      # ── 4. Cache npm packages ─────────────────────────────────────────────────
+      - name: Cache npm packages
         if: steps.parse.outputs.found == 'true'
         uses: actions/cache@v4
         with:
-          path: ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ hashFiles('package.json') }}
           restore-keys: |
-            ${{ runner.os }}-bun-
+            ${{ runner.os }}-npm-
 
-      # ── 5. Install dependencies ───────────────────────────────────────────────
+      # ── 5. Install dependencies via npm ──────────────────────────────────────
+      # npm is used here instead of bun because bun install hangs in this CI
+      # environment. The script itself still runs under bun.
       - name: Install dependencies
         if: steps.parse.outputs.found == 'true'
-        run: bun install --ignore-scripts
+        run: npm install --ignore-scripts
 
       # ── 6. Run downloader ────────────────────────────────────────────────────
       - name: Download files from Telegram channel

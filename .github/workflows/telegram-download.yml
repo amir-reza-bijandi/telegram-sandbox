@@ -38,7 +38,6 @@ jobs:
       - name: Extract channel ID from commit message
         id: parse
         env:
-          # Using an env var avoids shell-injection with special chars in commit msgs
           COMMIT_MSG: ${{ github.event.head_commit.message }}
         run: |
           echo "Commit message: $COMMIT_MSG"
@@ -63,15 +62,24 @@ jobs:
         with:
           bun-version: latest
 
-      # ── 4. Install dependencies (package.json is at repo root) ───────────────
+      # ── 4. Cache Bun packages ─────────────────────────────────────────────────
+      # Caches ~/.bun/install/cache so packages are not re-downloaded every run.
+      # The cache is keyed on bun.lock; any lockfile change busts it automatically.
+      - name: Cache Bun packages
+        if: steps.parse.outputs.found == 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      # ── 5. Install dependencies ───────────────────────────────────────────────
       - name: Install dependencies
         if: steps.parse.outputs.found == 'true'
-        run: |
-          echo "::group::bun install"
-          bun install --frozen-lockfile 2>/dev/null || bun install
-          echo "::endgroup::"
+        run: bun install
 
-      # ── 5. Run downloader ────────────────────────────────────────────────────
+      # ── 6. Run downloader ────────────────────────────────────────────────────
       - name: Download files from Telegram channel
         if: steps.parse.outputs.found == 'true'
         env:
@@ -84,7 +92,7 @@ jobs:
           bun run scripts/download-channel.ts
           echo "::endgroup::"
 
-      # ── 6. Commit & push downloads ───────────────────────────────────────────
+      # ── 7. Commit & push downloads ───────────────────────────────────────────
       - name: Commit downloads to repository
         if: steps.parse.outputs.found == 'true'
         run: |

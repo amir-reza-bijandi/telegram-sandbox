@@ -1,0 +1,107 @@
+name: Telegram Channel Downloader
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Trigger: any push to main/master whose commit message contains [tg:<channel_id>]
+#
+# Example commit messages that will trigger a download:
+#   "fetch assets [tg:-1001234567890]"
+#   "[tg:-1001234567890] grab channel files"
+#
+# Required repository secrets:
+#   TG_API_ID    – your Telegram API ID   (https://my.telegram.org)
+#   TG_API_HASH  – your Telegram API hash
+#   TG_SESSION   – session string from create-session.ts
+# ──────────────────────────────────────────────────────────────────────────────
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  download:
+    name: Download & archive Telegram files
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # needed to push the downloaded zips back to the repo
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 1
+
+      # ── 2. Parse commit message ───────────────────────────────────────────────
+      - name: Extract channel ID from commit message
+        id: parse
+        env:
+          # Using an env var avoids shell-injection with special chars in commit msgs
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+        run: |
+          echo "Commit message: $COMMIT_MSG"
+
+          CHANNEL_ID=$(printf '%s' "$COMMIT_MSG" \
+            | grep -oP '\[tg:(-?\d+)\]' \
+            | grep -oP '-?\d+' \
+            | head -1)
+
+          if [[ -z "$CHANNEL_ID" ]]; then
+            echo "::notice::No [tg:<id>] token found in commit message — skipping download."
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::Found Telegram channel ID: $CHANNEL_ID"
+            echo "found=true"           >> "$GITHUB_OUTPUT"
+            echo "channel=$CHANNEL_ID"  >> "$GITHUB_OUTPUT"
+          fi
+
+      # ── 3. Setup Bun ─────────────────────────────────────────────────────────
+      - name: Setup Bun
+        if: steps.parse.outputs.found == 'true'
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      # ── 4. Install dependencies ───────────────────────────────────────────────
+      - name: Install dependencies
+        if: steps.parse.outputs.found == 'true'
+        working-directory: scripts
+        run: |
+          echo "::group::bun install"
+          # --frozen-lockfile on CI; fall back to regular install if no lockfile yet
+          bun install --frozen-lockfile 2>/dev/null || bun install
+          echo "::endgroup::"
+
+      # ── 5. Run downloader ────────────────────────────────────────────────────
+      - name: Download files from Telegram channel
+        if: steps.parse.outputs.found == 'true'
+        working-directory: scripts
+        env:
+          TG_API_ID:     ${{ secrets.TG_API_ID }}
+          TG_API_HASH:   ${{ secrets.TG_API_HASH }}
+          TG_SESSION:    ${{ secrets.TG_SESSION }}
+          TG_CHANNEL_ID: ${{ steps.parse.outputs.channel }}
+        run: |
+          echo "::group::Telegram downloader output"
+          bun run download-channel.ts
+          echo "::endgroup::"
+
+      # ── 6. Commit & push downloads ───────────────────────────────────────────
+      - name: Commit downloads to repository
+        if: steps.parse.outputs.found == 'true'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add downloads/
+
+          if git diff --cached --quiet; then
+            echo "::notice::No new files — nothing to commit."
+          else
+            CHANNEL="${{ steps.parse.outputs.channel }}"
+            git commit -m "chore(tg): archive downloads from channel ${CHANNEL} [skip ci]"
+            git push
+            echo "::notice::Downloads committed and pushed successfully."
+          fi

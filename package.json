@@ -1,0 +1,22 @@
+{
+  "name": "telegram-sandbox",
+  "version": "1.0.0",
+  "description": "Downloads all files from a Telegram channel and zips them for GitHub storage",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "download": "bun run scripts/download-channel.ts",
+    "create-session": "bun run scripts/create-session.ts"
+  },
+  "dependencies": {
+    "@mtcute/bun": "latest",
+    "@mtcute/core": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}
